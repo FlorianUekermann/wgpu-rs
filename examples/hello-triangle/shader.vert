@@ -5,6 +5,6 @@ out gl_PerVertex {
 };
 
 void main() {
-    vec2 position = vec2(gl_VertexIndex, (gl_VertexIndex & 1) * 2) - 1;
-    gl_Position = vec4(position, 0.0, 1.0);
+    vec2 position = vec2(gl_VertexIndex % 3, ((gl_VertexIndex % 3) & 1) * 2) - 1;
+    gl_Position = vec4(position, gl_VertexIndex/1e4, 1.0);
 }

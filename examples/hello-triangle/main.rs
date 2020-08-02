@@ -1,11 +1,31 @@
 use std::borrow::Cow::Borrowed;
+use std::env;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
 
+const USAGE: &'static str = r#"Invalid or too many arguments, possible usages:
+*   no arguments - draw one triangle, redraw on resize"
+*   '--stress'   - keep redrawing 3333 triangles from back to front"#;
+
 async fn run(event_loop: EventLoop<()>, window: Window, swapchain_format: wgpu::TextureFormat) {
+    let args: Vec<_> = env::args().collect();
+    let (stress_test, invalid_args) = match args.len() {
+        // 0 on wasm, 1 on desktop
+        0 | 1 => (false, false),
+        2 => match args[1].as_ref() {
+            "--stress" => (true, false),
+            _ => (false, true),
+        },
+        _ => (false, true),
+    };
+    if invalid_args {
+        println!("{}", USAGE);
+        return;
+    }
+
     let size = window.inner_size();
     let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
     let surface = unsafe { instance.create_surface(&window) };
@@ -122,7 +142,11 @@ async fn run(event_loop: EventLoop<()>, window: Window, swapchain_format: wgpu::
                         depth_stencil_attachment: None,
                     });
                     rpass.set_pipeline(&render_pipeline);
-                    rpass.draw(0..3, 0..1);
+                    let mut vertices = 3;
+                    if stress_test {
+                        vertices = 9999;
+                    }
+                    rpass.draw(0..vertices, 0..1);
                 }
 
                 queue.submit(Some(encoder.finish()));
@@ -132,6 +156,9 @@ async fn run(event_loop: EventLoop<()>, window: Window, swapchain_format: wgpu::
                 ..
             } => *control_flow = ControlFlow::Exit,
             _ => {}
+        }
+        if stress_test {
+            window.request_redraw()
         }
     });
 }
